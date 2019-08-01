@@ -1,5 +1,5 @@
 /* GStreamer
- * Copyright (C) 2019 FIXME <fixme@example.com>
+ * Copyright (C) 2019 George Hawkins <https://github.com/george-hawkins>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -19,14 +19,14 @@
 /**
  * SECTION:element-gstabsolutetimestamps
  *
- * The absolutetimestamps element does FIXME stuff.
+ * The absolutetimestamps element generates a mapping from relative timestamps to absolute timestamps.
  *
  * <refsect2>
  * <title>Example launch line</title>
  * |[
- * gst-launch-1.0 -v fakesrc ! absolutetimestamps ! FIXME ! fakesink
+ * gst-launch-1.0 videotestsrc num-buffers=120 ! 'video/x-raw,width=1024,height=768,framerate=24/1' ! clockoverlay ! absolutetimestamps ! jpegenc ! avimux ! filesink sync=true location=out.avi
  * ]|
- * FIXME Describe what the pipeline does.
+ * Capture a mapping from relative timestamps to absolute timestamps so that frames can later be extracted by the absolute time at which they were captured (i.e. the time recorded by clockoverlay).
  * </refsect2>
  */
 
@@ -137,8 +137,8 @@ gst_absolutetimestamps_class_init (GstAbsolutetimestampsClass * klass)
       &gst_absolutetimestamps_sink_template);
 
   gst_element_class_set_static_metadata (GST_ELEMENT_CLASS (klass),
-      "FIXME Long name", "Generic", "FIXME Description",
-      "FIXME <fixme@example.com>");
+      "Absolutetimestamps", "Generic", "Generate a mapping from relative timestamps to absolute timestamps",
+      "George Hawkins <https://github.com/george-hawkins>");
 
   gobject_class->set_property = gst_absolutetimestamps_set_property;
   gobject_class->get_property = gst_absolutetimestamps_get_property;
@@ -495,31 +495,25 @@ static gboolean
 plugin_init (GstPlugin * plugin)
 {
 
-  /* FIXME Remember to set the rank if it's an element that is meant
-     to be autoplugged by decodebin. */
   return gst_element_register (plugin, "absolutetimestamps", GST_RANK_NONE,
       GST_TYPE_ABSOLUTETIMESTAMPS);
 }
 
-/* FIXME: these are normally defined by the GStreamer build system.
-   If you are creating an element to be included in gst-plugins-*,
-   remove these, as they're always defined.  Otherwise, edit as
-   appropriate for your external plugin package. */
 #ifndef VERSION
-#define VERSION "0.0.FIXME"
+#define VERSION "0.0.1"
 #endif
 #ifndef PACKAGE
-#define PACKAGE "FIXME_package"
+#define PACKAGE "gst-absolutetimestamps"
 #endif
 #ifndef PACKAGE_NAME
-#define PACKAGE_NAME "FIXME_package_name"
+#define PACKAGE_NAME "GstAbsolutetimestamps"
 #endif
 #ifndef GST_PACKAGE_ORIGIN
-#define GST_PACKAGE_ORIGIN "http://FIXME.org/"
+#define GST_PACKAGE_ORIGIN "https://github.com/george-hawkins/gst-absolutetimestamps"
 #endif
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
     absolutetimestamps,
-    "FIXME plugin description",
+    "Element for generating a mapping from relative timestamps to absolute timestamps",
     plugin_init, VERSION, "LGPL", PACKAGE_NAME, GST_PACKAGE_ORIGIN)
