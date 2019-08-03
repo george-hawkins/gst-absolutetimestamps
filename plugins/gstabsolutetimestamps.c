@@ -34,13 +34,16 @@
 #include "config.h"
 #endif
 
-#include <glib/gprintf.h>
+#include <glib/gstdio.h>
+
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
 #include "gstabsolutetimestamps.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_absolutetimestamps_debug_category);
 #define GST_CAT_DEFAULT gst_absolutetimestamps_debug_category
+
+#define DEFAULT_FILENAME "timestamps.log"
 
 /* prototypes */
 
@@ -86,7 +89,8 @@ static GstFlowReturn gst_absolutetimestamps_transform_ip (GstBaseTransform *
 
 enum
 {
-  PROP_0
+  PROP_0,
+  PROP_LOCATION
 };
 
 /* pad templates */
@@ -134,6 +138,12 @@ gst_absolutetimestamps_class_init (GstAbsolutetimestampsClass * klass)
 
   gobject_class->set_property = gst_absolutetimestamps_set_property;
   gobject_class->get_property = gst_absolutetimestamps_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_LOCATION,
+      g_param_spec_string ("location", "File Location",
+          "Location of the timestamp mapping file to write", DEFAULT_FILENAME,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   gobject_class->dispose = gst_absolutetimestamps_dispose;
   gobject_class->finalize = gst_absolutetimestamps_finalize;
   base_transform_class->transform_caps =
@@ -173,6 +183,8 @@ gst_absolutetimestamps_class_init (GstAbsolutetimestampsClass * klass)
 static void
 gst_absolutetimestamps_init (GstAbsolutetimestamps * absolutetimestamps)
 {
+  absolutetimestamps->filename = g_strdup(DEFAULT_FILENAME);
+  absolutetimestamps->file = NULL;
 }
 
 void
@@ -183,7 +195,14 @@ gst_absolutetimestamps_set_property (GObject * object, guint property_id,
 
   GST_DEBUG_OBJECT (absolutetimestamps, "set_property");
 
+  const gchar *location;
+
   switch (property_id) {
+    case PROP_LOCATION:
+	  location = g_value_get_string (value);
+      g_free (absolutetimestamps->filename); // Free the value created in gst_absolutetimestamps_init.
+      absolutetimestamps->filename = g_strdup (location);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -199,6 +218,9 @@ gst_absolutetimestamps_get_property (GObject * object, guint property_id,
   GST_DEBUG_OBJECT (absolutetimestamps, "get_property");
 
   switch (property_id) {
+    case PROP_LOCATION:
+      g_value_set_string (value, absolutetimestamps->filename);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -215,6 +237,9 @@ gst_absolutetimestamps_dispose (GObject * object)
   /* clean up as possible.  may be called multiple times */
 
   G_OBJECT_CLASS (gst_absolutetimestamps_parent_class)->dispose (object);
+
+  g_free (absolutetimestamps->filename);
+  absolutetimestamps->filename = NULL;
 }
 
 void
@@ -358,8 +383,21 @@ gst_absolutetimestamps_start (GstBaseTransform * trans)
 
   GST_DEBUG_OBJECT (absolutetimestamps, "start");
 
+  absolutetimestamps->file = g_fopen (absolutetimestamps->filename, "wb");
+
+  if (absolutetimestamps->file == NULL) {
+    GST_ELEMENT_ERROR (absolutetimestamps, RESOURCE, OPEN_WRITE,
+        ("Could not open file \"%s\" for writing.", absolutetimestamps->filename),
+        GST_ERROR_SYSTEM);
+    return FALSE;
+  }
+
   return TRUE;
 }
+
+// In GStreamer source you often see _("...") - the underscore is defined in <gst/gst-i18n-lib.h> and
+// is a shortcut for dgettext (a function for retrieving a localized version of a given string).
+// In copying over snippets from gstfilesink.c I've removed the underscore usage.
 
 static gboolean
 gst_absolutetimestamps_stop (GstBaseTransform * trans)
@@ -367,6 +405,14 @@ gst_absolutetimestamps_stop (GstBaseTransform * trans)
   GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
 
   GST_DEBUG_OBJECT (absolutetimestamps, "stop");
+
+  if (absolutetimestamps->file) {
+    if (fclose (absolutetimestamps->file) != 0)
+      GST_ELEMENT_ERROR (absolutetimestamps, RESOURCE, CLOSE,
+          ("Error closing file \"%s\".", absolutetimestamps->filename), GST_ERROR_SYSTEM);
+
+    absolutetimestamps->file = NULL;
+  }
 
   return TRUE;
 }
@@ -443,7 +489,7 @@ gst_absolutetimestamps_transform_ip (GstBaseTransform * trans, GstBuffer * buf)
 
       gchar *s = g_time_val_to_iso8601 (&real_time);
 
-      g_printf ("%" GST_TIME_FORMAT " %s\n", GST_TIME_ARGS (timestamp), s);
+      g_fprintf (absolutetimestamps->file, "%" GST_TIME_FORMAT " %s\n", GST_TIME_ARGS (timestamp), s);
 
       g_free (s);
   }

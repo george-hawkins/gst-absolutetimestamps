@@ -37,6 +37,8 @@ struct _GstAbsolutetimestamps
 {
   GstBaseTransform base_absolutetimestamps;
 
+  gchar *filename;
+  FILE *file;
 };
 
 struct _GstAbsolutetimestampsClass
