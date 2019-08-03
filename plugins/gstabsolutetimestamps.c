@@ -34,6 +34,7 @@
 #include "config.h"
 #endif
 
+#include <glib/gprintf.h>
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
 #include "gstabsolutetimestamps.h"
@@ -432,6 +433,20 @@ gst_absolutetimestamps_transform_ip (GstBaseTransform * trans, GstBuffer * buf)
   GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
 
   GST_DEBUG_OBJECT (absolutetimestamps, "transform_ip");
+
+  GstClockTime timestamp = GST_BUFFER_TIMESTAMP (buf);
+
+  if (timestamp != GST_CLOCK_TIME_NONE) {
+      GTimeVal real_time;
+
+      g_get_current_time (&real_time);
+
+      gchar *s = g_time_val_to_iso8601 (&real_time);
+
+      g_printf ("%" GST_TIME_FORMAT " %s\n", GST_TIME_ARGS (timestamp), s);
+
+      g_free (s);
+  }
 
   return GST_FLOW_OK;
 }
