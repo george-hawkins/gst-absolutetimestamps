@@ -51,37 +51,11 @@ static void gst_absolutetimestamps_set_property (GObject * object,
 static void gst_absolutetimestamps_get_property (GObject * object,
     guint property_id, GValue * value, GParamSpec * pspec);
 static void gst_absolutetimestamps_dispose (GObject * object);
-static void gst_absolutetimestamps_finalize (GObject * object);
 
-static GstCaps *gst_absolutetimestamps_transform_caps (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 static gboolean gst_absolutetimestamps_accept_caps (GstBaseTransform * trans,
     GstPadDirection direction, GstCaps * caps);
-static gboolean gst_absolutetimestamps_set_caps (GstBaseTransform * trans,
-    GstCaps * incaps, GstCaps * outcaps);
-static gboolean gst_absolutetimestamps_decide_allocation (GstBaseTransform *
-    trans, GstQuery * query);
-static gboolean gst_absolutetimestamps_filter_meta (GstBaseTransform * trans,
-    GstQuery * query, GType api, const GstStructure * params);
-static gboolean gst_absolutetimestamps_propose_allocation (GstBaseTransform *
-    trans, GstQuery * decide_query, GstQuery * query);
-static gboolean gst_absolutetimestamps_transform_size (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, gsize size, GstCaps * othercaps,
-    gsize * othersize);
-static gboolean gst_absolutetimestamps_get_unit_size (GstBaseTransform * trans,
-    GstCaps * caps, gsize * size);
 static gboolean gst_absolutetimestamps_start (GstBaseTransform * trans);
 static gboolean gst_absolutetimestamps_stop (GstBaseTransform * trans);
-static gboolean gst_absolutetimestamps_sink_event (GstBaseTransform * trans,
-    GstEvent * event);
-static gboolean gst_absolutetimestamps_src_event (GstBaseTransform * trans,
-    GstEvent * event);
-static gboolean gst_absolutetimestamps_copy_metadata (GstBaseTransform * trans,
-    GstBuffer * input, GstBuffer * outbuf);
-static gboolean gst_absolutetimestamps_transform_meta (GstBaseTransform * trans,
-    GstBuffer * outbuf, GstMeta * meta, GstBuffer * inbuf);
-static void gst_absolutetimestamps_before_transform (GstBaseTransform * trans,
-    GstBuffer * buffer);
 static GstFlowReturn gst_absolutetimestamps_transform_ip (GstBaseTransform *
     trans, GstBuffer * buf);
 
@@ -143,36 +117,11 @@ gst_absolutetimestamps_class_init (GstAbsolutetimestampsClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gobject_class->dispose = gst_absolutetimestamps_dispose;
-  gobject_class->finalize = gst_absolutetimestamps_finalize;
-  base_transform_class->transform_caps =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_transform_caps);
   base_transform_class->accept_caps =
       GST_DEBUG_FUNCPTR (gst_absolutetimestamps_accept_caps);
-  base_transform_class->set_caps =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_set_caps);
-  base_transform_class->decide_allocation =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_decide_allocation);
-  base_transform_class->filter_meta =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_filter_meta);
-  base_transform_class->propose_allocation =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_propose_allocation);
-  base_transform_class->transform_size =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_transform_size);
-  base_transform_class->get_unit_size =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_get_unit_size);
   base_transform_class->start =
       GST_DEBUG_FUNCPTR (gst_absolutetimestamps_start);
   base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_absolutetimestamps_stop);
-  base_transform_class->sink_event =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_sink_event);
-  base_transform_class->src_event =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_src_event);
-  base_transform_class->copy_metadata =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_copy_metadata);
-  base_transform_class->transform_meta =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_transform_meta);
-  base_transform_class->before_transform =
-      GST_DEBUG_FUNCPTR (gst_absolutetimestamps_before_transform);
   base_transform_class->transform_ip =
       GST_DEBUG_FUNCPTR (gst_absolutetimestamps_transform_ip);
 
@@ -240,51 +189,6 @@ gst_absolutetimestamps_dispose (GObject * object)
   absolutetimestamps->filename = NULL;
 }
 
-void
-gst_absolutetimestamps_finalize (GObject * object)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (object);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "finalize");
-
-  /* clean up object here */
-
-  G_OBJECT_CLASS (gst_absolutetimestamps_parent_class)->finalize (object);
-}
-
-static GstCaps *
-gst_absolutetimestamps_transform_caps (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, GstCaps * filter)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-  GstCaps *othercaps;
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "transform_caps");
-
-  othercaps = gst_caps_copy (caps);
-
-  /* Copy other caps and modify as appropriate */
-  /* This works for the simplest cases, where the transform modifies one
-   * or more fields in the caps structure.  It does not work correctly
-   * if passthrough caps are preferred. */
-  if (direction == GST_PAD_SRC) {
-    /* transform caps going upstream */
-  } else {
-    /* transform caps going downstream */
-  }
-
-  if (filter) {
-    GstCaps *intersect;
-
-    intersect = gst_caps_intersect (othercaps, filter);
-    gst_caps_unref (othercaps);
-
-    return intersect;
-  } else {
-    return othercaps;
-  }
-}
-
 static gboolean
 gst_absolutetimestamps_accept_caps (GstBaseTransform * trans,
     GstPadDirection direction, GstCaps * caps)
@@ -301,76 +205,6 @@ gst_absolutetimestamps_accept_caps (GstBaseTransform * trans,
     pad = GST_BASE_TRANSFORM_SRC_PAD (trans);
 
   return gst_pad_peer_query_accept_caps (pad, caps);
-}
-
-static gboolean
-gst_absolutetimestamps_set_caps (GstBaseTransform * trans, GstCaps * incaps,
-    GstCaps * outcaps)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "set_caps");
-
-  return TRUE;
-}
-
-/* decide allocation query for output buffers */
-static gboolean
-gst_absolutetimestamps_decide_allocation (GstBaseTransform * trans,
-    GstQuery * query)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "decide_allocation");
-
-  return TRUE;
-}
-
-static gboolean
-gst_absolutetimestamps_filter_meta (GstBaseTransform * trans, GstQuery * query,
-    GType api, const GstStructure * params)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "filter_meta");
-
-  return TRUE;
-}
-
-/* propose allocation query parameters for input buffers */
-static gboolean
-gst_absolutetimestamps_propose_allocation (GstBaseTransform * trans,
-    GstQuery * decide_query, GstQuery * query)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "propose_allocation");
-
-  return TRUE;
-}
-
-/* transform size */
-static gboolean
-gst_absolutetimestamps_transform_size (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, gsize size, GstCaps * othercaps,
-    gsize * othersize)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "transform_size");
-
-  return TRUE;
-}
-
-static gboolean
-gst_absolutetimestamps_get_unit_size (GstBaseTransform * trans, GstCaps * caps,
-    gsize * size)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "get_unit_size");
-
-  return TRUE;
 }
 
 /* states */
@@ -413,62 +247,6 @@ gst_absolutetimestamps_stop (GstBaseTransform * trans)
   }
 
   return TRUE;
-}
-
-/* sink and src pad event handlers */
-static gboolean
-gst_absolutetimestamps_sink_event (GstBaseTransform * trans, GstEvent * event)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "sink_event");
-
-  return GST_BASE_TRANSFORM_CLASS (gst_absolutetimestamps_parent_class)->
-      sink_event (trans, event);
-}
-
-static gboolean
-gst_absolutetimestamps_src_event (GstBaseTransform * trans, GstEvent * event)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "src_event");
-
-  return GST_BASE_TRANSFORM_CLASS (gst_absolutetimestamps_parent_class)->
-      src_event (trans, event);
-}
-
-/* metadata */
-static gboolean
-gst_absolutetimestamps_copy_metadata (GstBaseTransform * trans,
-    GstBuffer * input, GstBuffer * outbuf)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "copy_metadata");
-
-  return TRUE;
-}
-
-static gboolean
-gst_absolutetimestamps_transform_meta (GstBaseTransform * trans,
-    GstBuffer * outbuf, GstMeta * meta, GstBuffer * inbuf)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "transform_meta");
-
-  return TRUE;
-}
-
-static void
-gst_absolutetimestamps_before_transform (GstBaseTransform * trans,
-    GstBuffer * buffer)
-{
-  GstAbsolutetimestamps *absolutetimestamps = GST_ABSOLUTETIMESTAMPS (trans);
-
-  GST_DEBUG_OBJECT (absolutetimestamps, "before_transform");
-
 }
 
 static GstFlowReturn
